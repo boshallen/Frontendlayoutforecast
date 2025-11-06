@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Input } from './ui/input';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { Button } from './ui/button';
@@ -82,19 +81,22 @@ export function LocationSelector({ onLocationChange, compact = false }: Location
     }
   };
 
-  const gridClass = compact ? "grid gap-4" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4";
+  const gridClass = compact ? "grid gap-6" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6";
 
   return (
     <div className={gridClass}>
-      <div className="space-y-2">
-        <Label htmlFor="province" className="text-gray-900">省份</Label>
+      <div className="space-y-3">
+        <Label htmlFor="province" className="text-base text-gray-900 flex items-center gap-2">
+          <span className="text-red-600">*</span>
+          省份
+        </Label>
         <Select value={province} onValueChange={handleProvinceChange}>
-          <SelectTrigger id="province" className="h-11 border-gray-300">
+          <SelectTrigger id="province" className="h-12 border-2 border-gray-300 text-base">
             <SelectValue placeholder="请选择省份" />
           </SelectTrigger>
           <SelectContent>
             {locations.provinces.map((p) => (
-              <SelectItem key={p} value={p}>
+              <SelectItem key={p} value={p} className="text-base">
                 {p}
               </SelectItem>
             ))}
@@ -102,16 +104,19 @@ export function LocationSelector({ onLocationChange, compact = false }: Location
         </Select>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="city" className="text-gray-900">城市</Label>
+      <div className="space-y-3">
+        <Label htmlFor="city" className="text-base text-gray-900 flex items-center gap-2">
+          <span className="text-red-600">*</span>
+          城市
+        </Label>
         <Select value={city} onValueChange={handleCityChange} disabled={!province}>
-          <SelectTrigger id="city" className="h-11 border-gray-300">
+          <SelectTrigger id="city" className="h-12 border-2 border-gray-300 text-base">
             <SelectValue placeholder="请选择城市" />
           </SelectTrigger>
           <SelectContent>
             {province &&
               locations.cities[province as keyof typeof locations.cities]?.map((c) => (
-                <SelectItem key={c} value={c}>
+                <SelectItem key={c} value={c} className="text-base">
                   {c}
                 </SelectItem>
               ))}
@@ -119,16 +124,19 @@ export function LocationSelector({ onLocationChange, compact = false }: Location
         </Select>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="district" className="text-gray-900">区/县</Label>
+      <div className="space-y-3">
+        <Label htmlFor="district" className="text-base text-gray-900 flex items-center gap-2">
+          <span className="text-red-600">*</span>
+          区/县
+        </Label>
         <Select value={district} onValueChange={handleDistrictChange} disabled={!city}>
-          <SelectTrigger id="district" className="h-11 border-gray-300">
+          <SelectTrigger id="district" className="h-12 border-2 border-gray-300 text-base">
             <SelectValue placeholder="请选择区县" />
           </SelectTrigger>
           <SelectContent>
             {city &&
               locations.districts[city as keyof typeof locations.districts]?.map((d) => (
-                <SelectItem key={d} value={d}>
+                <SelectItem key={d} value={d} className="text-base">
                   {d}
                 </SelectItem>
               ))}
@@ -136,24 +144,27 @@ export function LocationSelector({ onLocationChange, compact = false }: Location
         </Select>
       </div>
 
-      <div className="space-y-2">
-        <Label className="text-gray-900">小区名称</Label>
+      <div className="space-y-3">
+        <Label className="text-base text-gray-900 flex items-center gap-2">
+          <span className="text-red-600">*</span>
+          小区名称
+        </Label>
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="w-full justify-between h-11 border-gray-300"
+              className="w-full justify-between h-12 border-2 border-gray-300 text-base"
               disabled={!district}
             >
               {neighborhood || "搜索小区..."}
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              <ChevronsUpDown className="ml-2 h-5 w-5 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-full p-0">
             <Command>
-              <CommandInput placeholder="搜索小区名称..." />
+              <CommandInput placeholder="搜索小区名称..." className="h-12" />
               <CommandList>
                 <CommandEmpty>未找到相关小区</CommandEmpty>
                 <CommandGroup>
@@ -165,9 +176,10 @@ export function LocationSelector({ onLocationChange, compact = false }: Location
                         handleNeighborhoodChange(currentValue === neighborhood ? '' : currentValue);
                         setOpen(false);
                       }}
+                      className="text-base py-3"
                     >
                       <Check
-                        className={`mr-2 h-4 w-4 ${neighborhood === n ? 'opacity-100' : 'opacity-0'}`}
+                        className={`mr-3 h-5 w-5 ${neighborhood === n ? 'opacity-100' : 'opacity-0'}`}
                       />
                       {n}
                     </CommandItem>
