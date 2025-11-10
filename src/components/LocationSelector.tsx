@@ -1,42 +1,19 @@
 import { useState } from 'react';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
-import { Button } from './ui/button';
-import { Check, ChevronsUpDown } from 'lucide-react';
+import { Input } from './ui/input';
+import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 
-// Mock data - replace with real data from your API
+// 当前使用的数据 - 后期将从JSON文件读取
 const locations = {
-  provinces: ['北京市', '上海市', '广东省', '浙江省', '江苏省'],
+  provinces: ['黑龙江省'],
   cities: {
-    '北京市': ['北京市'],
-    '上海市': ['上海市'],
-    '广东省': ['广州市', '深圳市', '东莞市', '佛山市'],
-    '浙江省': ['杭州市', '宁波市', '温州市'],
-    '江苏省': ['南京市', '苏州市', '无锡市'],
+    '黑龙江省': ['哈尔滨市'],
   },
   districts: {
-    '北京市': ['朝阳区', '海淀区', '东城区', '西城区'],
-    '上海市': ['浦东新区', '黄浦区', '徐汇区', '长宁区'],
-    '广州市': ['天河区', '越秀区', '海珠区', '番禺区'],
-    '深圳市': ['南山区', '福田区', '罗湖区', '宝安区'],
-    '杭州市': ['西湖区', '拱墅区', '江干区', '滨江区'],
-    '南京市': ['鼓楼区', '玄武区', '秦淮区', '建邺区'],
-    '苏州市': ['姑苏区', '吴中区', '相城区', '昆山市'],
+    '哈尔滨市': [], // 预留，后期从JSON读取
   },
-  neighborhoods: [
-    '绿谷花园',
-    '阳光广场',
-    '湖景雅苑',
-    '中央商务区',
-    '科技园东区',
-    '大学城',
-    '滨江社区',
-    '花园洋房',
-    '地铁站周边',
-    '工业园西区',
-  ],
+  neighborhoods: [], // 预留，后期从JSON读取
 };
 
 interface LocationSelectorProps {
@@ -45,6 +22,10 @@ interface LocationSelectorProps {
     city: string;
     district: string;
     neighborhood: string;
+    area: number;
+    isNorthSouth: string;
+    longitude: number | null;
+    latitude: number | null;
   }) => void;
   compact?: boolean;
 }
@@ -54,7 +35,10 @@ export function LocationSelector({ onLocationChange, compact = false }: Location
   const [city, setCity] = useState('');
   const [district, setDistrict] = useState('');
   const [neighborhood, setNeighborhood] = useState('');
-  const [open, setOpen] = useState(false);
+  const [area, setArea] = useState('');
+  const [isNorthSouth, setIsNorthSouth] = useState('');
+  const [longitude, setLongitude] = useState('');
+  const [latitude, setLatitude] = useState('');
 
   const handleProvinceChange = (value: string) => {
     setProvince(value);
@@ -74,121 +58,133 @@ export function LocationSelector({ onLocationChange, compact = false }: Location
     setNeighborhood('');
   };
 
-  const handleNeighborhoodChange = (value: string) => {
-    setNeighborhood(value);
-    if (onLocationChange) {
-      onLocationChange({ province, city, district, neighborhood: value });
-    }
-  };
-
-  const gridClass = compact ? "grid gap-6" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6";
-
   return (
-    <div className={gridClass}>
-      <div className="space-y-3">
-        <Label htmlFor="province" className="text-base text-gray-900 flex items-center gap-2">
-          <span className="text-red-600">*</span>
-          省份
-        </Label>
-        <Select value={province} onValueChange={handleProvinceChange}>
-          <SelectTrigger id="province" className="h-12 border-2 border-gray-300 text-base">
-            <SelectValue placeholder="请选择省份" />
-          </SelectTrigger>
-          <SelectContent>
-            {locations.provinces.map((p) => (
-              <SelectItem key={p} value={p} className="text-base">
-                {p}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="space-y-3">
-        <Label htmlFor="city" className="text-base text-gray-900 flex items-center gap-2">
-          <span className="text-red-600">*</span>
-          城市
-        </Label>
-        <Select value={city} onValueChange={handleCityChange} disabled={!province}>
-          <SelectTrigger id="city" className="h-12 border-2 border-gray-300 text-base">
-            <SelectValue placeholder="请选择城市" />
-          </SelectTrigger>
-          <SelectContent>
-            {province &&
-              locations.cities[province as keyof typeof locations.cities]?.map((c) => (
-                <SelectItem key={c} value={c} className="text-base">
-                  {c}
+    <div className="space-y-5">
+      {/* 第一行：省市区小区 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="province" className="text-sm text-gray-900 flex items-center gap-1">
+            <span className="text-red-600">*</span>
+            省份
+          </Label>
+          <Select value={province} onValueChange={handleProvinceChange}>
+            <SelectTrigger id="province" className="h-9 border-gray-300">
+              <SelectValue placeholder="请选择省份" />
+            </SelectTrigger>
+            <SelectContent>
+              {locations.provinces.map((p) => (
+                <SelectItem key={p} value={p}>
+                  {p}
                 </SelectItem>
               ))}
-          </SelectContent>
-        </Select>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="city" className="text-sm text-gray-900 flex items-center gap-1">
+            <span className="text-red-600">*</span>
+            城市
+          </Label>
+          <Select value={city} onValueChange={handleCityChange} disabled={!province}>
+            <SelectTrigger id="city" className="h-9 border-gray-300">
+              <SelectValue placeholder="请选择城市" />
+            </SelectTrigger>
+            <SelectContent>
+              {province &&
+                locations.cities[province as keyof typeof locations.cities]?.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="district" className="text-sm text-gray-900 flex items-center gap-1">
+            <span className="text-red-600">*</span>
+            区/县
+          </Label>
+          <Input
+            id="district"
+            placeholder="待从JSON加载"
+            disabled
+            className="h-9 border-gray-300 bg-gray-50"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="neighborhood" className="text-sm text-gray-900 flex items-center gap-1">
+            <span className="text-red-600">*</span>
+            小区名称
+          </Label>
+          <Input
+            id="neighborhood"
+            placeholder="待从JSON加载"
+            disabled
+            className="h-9 border-gray-300 bg-gray-50"
+          />
+        </div>
       </div>
 
-      <div className="space-y-3">
-        <Label htmlFor="district" className="text-base text-gray-900 flex items-center gap-2">
-          <span className="text-red-600">*</span>
-          区/县
-        </Label>
-        <Select value={district} onValueChange={handleDistrictChange} disabled={!city}>
-          <SelectTrigger id="district" className="h-12 border-2 border-gray-300 text-base">
-            <SelectValue placeholder="请选择区县" />
-          </SelectTrigger>
-          <SelectContent>
-            {city &&
-              locations.districts[city as keyof typeof locations.districts]?.map((d) => (
-                <SelectItem key={d} value={d} className="text-base">
-                  {d}
-                </SelectItem>
-              ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {/* 第二行：面积、南北通透、经纬度 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="area" className="text-sm text-gray-900 flex items-center gap-1">
+            <span className="text-red-600">*</span>
+            面积（平方米）
+          </Label>
+          <Input
+            id="area"
+            type="number"
+            placeholder="请输入房屋面积"
+            value={area}
+            onChange={(e) => setArea(e.target.value)}
+            className="h-9 border-gray-300"
+            required
+          />
+        </div>
 
-      <div className="space-y-3">
-        <Label className="text-base text-gray-900 flex items-center gap-2">
-          <span className="text-red-600">*</span>
-          小区名称
-        </Label>
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={open}
-              className="w-full justify-between h-12 border-2 border-gray-300 text-base"
-              disabled={!district}
-            >
-              {neighborhood || "搜索小区..."}
-              <ChevronsUpDown className="ml-2 h-5 w-5 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-full p-0">
-            <Command>
-              <CommandInput placeholder="搜索小区名称..." className="h-12" />
-              <CommandList>
-                <CommandEmpty>未找到相关小区</CommandEmpty>
-                <CommandGroup>
-                  {locations.neighborhoods.map((n) => (
-                    <CommandItem
-                      key={n}
-                      value={n}
-                      onSelect={(currentValue) => {
-                        handleNeighborhoodChange(currentValue === neighborhood ? '' : currentValue);
-                        setOpen(false);
-                      }}
-                      className="text-base py-3"
-                    >
-                      <Check
-                        className={`mr-3 h-5 w-5 ${neighborhood === n ? 'opacity-100' : 'opacity-0'}`}
-                      />
-                      {n}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
+        <div className="space-y-2">
+          <Label className="text-sm text-gray-900">主要房间是否南北通透</Label>
+          <RadioGroup value={isNorthSouth} onValueChange={setIsNorthSouth} className="flex items-center gap-4 h-9">
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="yes" id="yes" />
+              <Label htmlFor="yes" className="text-sm cursor-pointer">是</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <RadioGroupItem value="no" id="no" />
+              <Label htmlFor="no" className="text-sm cursor-pointer">否</Label>
+            </div>
+          </RadioGroup>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="longitude" className="text-sm text-gray-900">经度</Label>
+          <Input
+            id="longitude"
+            type="number"
+            step="0.000001"
+            placeholder="选填"
+            value={longitude}
+            onChange={(e) => setLongitude(e.target.value)}
+            className="h-9 border-gray-300"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="latitude" className="text-sm text-gray-900">纬度</Label>
+          <Input
+            id="latitude"
+            type="number"
+            step="0.000001"
+            placeholder="选填"
+            value={latitude}
+            onChange={(e) => setLatitude(e.target.value)}
+            className="h-9 border-gray-300"
+          />
+        </div>
       </div>
     </div>
   );
