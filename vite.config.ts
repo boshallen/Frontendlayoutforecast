@@ -51,10 +51,32 @@
     },
     build: {
       target: 'esnext',
-      outDir: 'build',
+      outDir: 'dist',
     },
     server: {
-      port: 3000,
+      port: 5173,
+      strictPort: true,
       open: true,
+      proxy: {
+        '/api': {
+          target: 'http://127.0.0.1:5025',
+          changeOrigin: true,
+          secure: false,
+        },
+        '/location-options.json': {
+          target: 'http://127.0.0.1:5025',
+          changeOrigin: true,
+          secure: false,
+        },
+      },
+      fs: {
+        allow: [
+          path.resolve(__dirname),
+          path.resolve(__dirname, '..'),
+          path.resolve(__dirname, '../templates'),
+          // 绝对路径兜底：确保可直接 import 根目录 templates 下的 JSON
+          '/Users/yanbo/Code/VSCODE/LongRui/House_Prize_web/templates',
+        ],
+      },
     },
   });

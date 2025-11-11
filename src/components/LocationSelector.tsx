@@ -1,20 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Input } from './ui/input';
-import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 
-// 当前使用的数据 - 后期将从JSON文件读取
-const locations = {
-  provinces: ['黑龙江省'],
-  cities: {
-    '黑龙江省': ['哈尔滨市'],
-  },
-  districts: {
-    '哈尔滨市': [], // 预留，后期从JSON读取
-  },
-  neighborhoods: [], // 预留，后期从JSON读取
-};
+// 省 -> 市 -> 区/县 -> 小区
+type OptionsTree = Record<string, Record<string, Record<string, string[]>>>;
 
 interface LocationSelectorProps {
   onLocationChange?: (location: {
@@ -31,15 +21,39 @@ interface LocationSelectorProps {
 }
 
 export function LocationSelector({ onLocationChange, compact = false }: LocationSelectorProps) {
+  // 选项数据
+  const [options, setOptions] = useState<OptionsTree>({});
+
+  // 选择值
   const [province, setProvince] = useState('');
   const [city, setCity] = useState('');
   const [district, setDistrict] = useState('');
   const [neighborhood, setNeighborhood] = useState('');
   const [area, setArea] = useState('');
-  const [isNorthSouth, setIsNorthSouth] = useState('');
+  const [isNorthSouth, setIsNorthSouth] = useState(''); // 'yes' | 'no' | ''
   const [longitude, setLongitude] = useState('');
   const [latitude, setLatitude] = useState('');
 
+  // 从后端读取四级联动选项
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch('/location-options.json', { method: 'GET' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = (await res.json()) as OptionsTree;
+        if (!alive) return;
+        setOptions(json || {});
+        // 若只有一个省/市可选，可以在此做默认选中（保持手动选择更安全，这里不自动勾选）
+      } catch (e) {
+        // 开发期提示即可；生产期可上报
+        console.warn('[LocationSelector] 读取 location-options.json 失败：', e);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  // 级联重置
   const handleProvinceChange = (value: string) => {
     setProvince(value);
     setCity('');
@@ -58,6 +72,27 @@ export function LocationSelector({ onLocationChange, compact = false }: Location
     setNeighborhood('');
   };
 
+  // 派发到父组件（与原 props 兼容）
+  useEffect(() => {
+    if (!onLocationChange) return;
+    onLocationChange({
+      province,
+      city,
+      district,
+      neighborhood,
+      area: area === '' ? NaN : Number(area),
+      isNorthSouth,
+      longitude: longitude === '' ? null : Number(longitude),
+      latitude: latitude === '' ? null : Number(latitude),
+    });
+  }, [province, city, district, neighborhood, area, isNorthSouth, longitude, latitude, onLocationChange]);
+
+  // 从 options 中派生当前级选项列表
+  const provinces = Object.keys(options || {});
+  const cities = province ? Object.keys(options[province] || {}) : [];
+  const districts = province && city ? Object.keys(options[province]?.[city] || {}) : [];
+  const neighborhoods = province && city && district ? (options[province]?.[city]?.[district] || []) : [];
+
   return (
     <div className="space-y-5">
       {/* 第一行：省市区小区 */}
@@ -72,10 +107,8 @@ export function LocationSelector({ onLocationChange, compact = false }: Location
               <SelectValue placeholder="请选择省份" />
             </SelectTrigger>
             <SelectContent>
-              {locations.provinces.map((p) => (
-                <SelectItem key={p} value={p}>
-                  {p}
-                </SelectItem>
+              {provinces.map((p) => (
+                <SelectItem key={p} value={p}>{p}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -88,15 +121,12 @@ export function LocationSelector({ onLocationChange, compact = false }: Location
           </Label>
           <Select value={city} onValueChange={handleCityChange} disabled={!province}>
             <SelectTrigger id="city" className="h-9 border-gray-300">
-              <SelectValue placeholder="请选择城市" />
+              <SelectValue placeholder={province ? '请选择城市' : '请先选择省份'} />
             </SelectTrigger>
             <SelectContent>
-              {province &&
-                locations.cities[province as keyof typeof locations.cities]?.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
-                  </SelectItem>
-                ))}
+              {cities.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -106,12 +136,16 @@ export function LocationSelector({ onLocationChange, compact = false }: Location
             <span className="text-red-600">*</span>
             区/县
           </Label>
-          <Input
-            id="district"
-            placeholder="待从JSON加载"
-            disabled
-            className="h-9 border-gray-300 bg-gray-50"
-          />
+          <Select value={district} onValueChange={handleDistrictChange} disabled={!city}>
+            <SelectTrigger id="district" className="h-9 border-gray-300">
+              <SelectValue placeholder={city ? '请选择区/县' : '请先选择城市'} />
+            </SelectTrigger>
+            <SelectContent>
+              {districts.map((d) => (
+                <SelectItem key={d} value={d}>{d}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-2">
@@ -119,12 +153,16 @@ export function LocationSelector({ onLocationChange, compact = false }: Location
             <span className="text-red-600">*</span>
             小区名称
           </Label>
-          <Input
-            id="neighborhood"
-            placeholder="待从JSON加载"
-            disabled
-            className="h-9 border-gray-300 bg-gray-50"
-          />
+          <Select value={neighborhood} onValueChange={setNeighborhood} disabled={!district}>
+            <SelectTrigger id="neighborhood" className="h-9 border-gray-300">
+              <SelectValue placeholder={district ? '请选择小区' : '请先选择区/县'} />
+            </SelectTrigger>
+            <SelectContent>
+              {neighborhoods.map((n) => (
+                <SelectItem key={n} value={n}>{n}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -147,17 +185,16 @@ export function LocationSelector({ onLocationChange, compact = false }: Location
         </div>
 
         <div className="space-y-2">
-          <Label className="text-sm text-gray-900">主要房间是否南北通透</Label>
-          <RadioGroup value={isNorthSouth} onValueChange={setIsNorthSouth} className="flex items-center gap-4 h-9">
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="yes" id="yes" />
-              <Label htmlFor="yes" className="text-sm cursor-pointer">是</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <RadioGroupItem value="no" id="no" />
-              <Label htmlFor="no" className="text-sm cursor-pointer">否</Label>
-            </div>
-          </RadioGroup>
+          <Label htmlFor="isNorthSouth" className="text-sm text-gray-900">主要房间是否南北通透</Label>
+          <Select value={isNorthSouth} onValueChange={setIsNorthSouth}>
+            <SelectTrigger id="isNorthSouth" className="h-9 border-gray-300">
+              <SelectValue placeholder="请选择" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="yes">是</SelectItem>
+              <SelectItem value="no">否</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-2">
